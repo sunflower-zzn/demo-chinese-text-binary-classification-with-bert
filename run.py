@@ -9,6 +9,7 @@ import bert
 from bert import run_classifier
 from bert import optimization
 from bert import tokenization
+import csv
 
 
 def pretty_print(result):
@@ -32,7 +33,7 @@ def prediction_print(prediction):
     return output
 
 
-
+'''
 def create_tokenizer_from_hub_module(bert_model_hub):
     """Get the vocab file and casing info from the Hub module."""
     with tf.Graph().as_default():
@@ -221,7 +222,7 @@ def estimator_builder(bert_model_hub, OUTPUT_DIR, SAVE_SUMMARY_STEPS, SAVE_CHECK
         config=run_config,
         params={"batch_size": BATCH_SIZE})
     return estimator, model_fn, run_config
-
+'''
 
 
 def create_tokenizer_from_hub_module(bert_model_hub):
@@ -471,50 +472,50 @@ def run_on_dfs(train, test, predict, DATA_COLUMN, LABEL_COLUMN,
     # return result_dict,estimator
 
 
-import random
+if __name__ == '__main__':
+    # 输出文件夹output
+    OUTPUT_DIR = 'output'
 
-random.seed(10)
+    # with open("dianping_train_test.pickle", 'rb') as f:
+    #    train, test = pickle.load(f)
 
-OUTPUT_DIR = 'output'
+    # 加载trail、test、predict
+    train = pd.read_csv("train_data.csv", encoding='gbk')
+    test = pd.read_csv("test_data.csv", encoding='gbk')
+    predict = pd.read_csv("predict_data.csv", encoding='gbk')
 
-# with open("dianping_train_test.pickle", 'rb') as f:
-#    train, test = pickle.load(f)
-train = pd.read_csv("train_data.csv", encoding='gbk')
-test = pd.read_csv("test_data.csv", encoding='gbk')
-predict = pd.read_csv("predict_data.csv", encoding='gbk')
+    # 取train全部的内容（sample切片，长度为len），并且打乱顺序
+    train = train.sample(len(train))
+    # 打印前五行，查看读取效果
+    print(train.head())
 
-train = train.sample(len(train))
-print(train.head())
+    myparam = {
+        "DATA_COLUMN": "content",  # 数据列（第一列）
+        "LABEL_COLUMN": "label",  # 标签列（第二列）
+        "LEARNING_RATE": 2e-5,  # 学习率
+        "NUM_TRAIN_EPOCHS": 3,  # 训练轮数
+        "bert_model_hub": "module"  # 使用的模型 "https://tfhub.dev/google/bert_chinese_L-12_H-768_A-12/1"
+    }
+    result, prediction, estimator = run_on_dfs(train, test, predict, **myparam)
+    acc = pretty_print(result)
+    print(acc)
+    acc.to_csv("acc.csv")
 
-myparam = {
-    "DATA_COLUMN": "content",
-    "LABEL_COLUMN": "label",
-    "LEARNING_RATE": 2e-5,
-    "NUM_TRAIN_EPOCHS": 3,
-    "bert_model_hub": "module"  # "https://tfhub.dev/google/bert_chinese_L-12_H-768_A-12/1"
-}
-result, prediction, estimator = run_on_dfs(train, test, predict, **myparam)
-acc = pretty_print(result)
-print(acc)
-acc.to_csv("acc.csv")
+    dataframe = prediction_print(prediction)
 
-dataframe = prediction_print(prediction)
-
-import csv
-
-data = []
-with open("test_data.csv", "r", encoding="gbk") as f:
-    csv_reader = csv.reader(f)
-    for row in csv_reader:
-        data.append(row)
-data[0].append("predictions")
-count = 0
-for row in data[1:]:
-    if dataframe[count]["labels"] == 0:
-        row.append("__problem__")
-    else:
-        row.append("__noproblem__")
-    count += 1
-with open("prediction.csv", "w", encoding="gbk") as f:
-    csv_writer = csv.writer(f)
-    csv_writer.writerows(data)
+    data = []
+    with open("test_data.csv", "r", encoding="gbk") as f:
+        csv_reader = csv.reader(f)
+        for row in csv_reader:
+            data.append(row)
+    data[0].append("predictions")
+    count = 0
+    for row in data[1:]:
+        if dataframe[count]["labels"] == 0:
+            row.append("__problem__")
+        else:
+            row.append("__noproblem__")
+        count += 1
+    with open("prediction.csv", "w", encoding="gbk") as f:
+        csv_writer = csv.writer(f)
+        csv_writer.writerows(data)
